@@ -73,17 +73,33 @@ impl Calculator {
 
         let mut stack: Vec<Token> = Vec::new();
         let mut queue: Vec<Token> = Vec::new();
+        let mut parens_stack: Vec<Token> = Vec::new();
+        let mut parens_queue: Vec<Token> = Vec::new();
 
         while let Some(token) = tokens.pop() {
             match token {
                 Token::Num(_) => {
+                    // if stack[stack.len() - 1] == Token::Bracket('(') {
+                    if stack.len() > 0 && stack[stack.len() - 1] == Token::Bracket('(') {
+                        parens_queue.push(token);
+                        continue;
+                    }
                     queue.push(token);
                 }
                 Token::Op(_) => {
-                    while !stack.is_empty() && stack[stack.len() - 1] >= token {
-                        queue.push(stack.pop().unwrap());
+                    if stack.len() > 0 && stack[stack.len() - 1] == Token::Bracket('(') {
+                        while !parens_stack.is_empty()
+                            && parens_stack[parens_stack.len() - 1] >= token
+                        {
+                            parens_queue.push(parens_stack.pop().unwrap());
+                        }
+                        parens_stack.push(token)
+                    } else {
+                        while !stack.is_empty() && stack[stack.len() - 1] >= token {
+                            queue.push(stack.pop().unwrap());
+                        }
+                        stack.push(token)
                     }
-                    stack.push(token)
                 }
                 Token::Bracket('(') => stack.push(token),
                 Token::Bracket(')') => {
@@ -95,10 +111,17 @@ impl Calculator {
                 _ => {}
             }
         }
-        while stack.len() > 0 {
-            queue.push(stack.pop().unwrap())
+
+        while parens_stack.len() > 0 {
+            parens_queue.push(parens_stack.pop().unwrap())
         }
-        queue
+        parens_queue.append(&mut queue);
+        while stack.len() > 0 {
+            parens_queue.push(stack.pop().unwrap())
+        }
+        println!("{:?}", parens_queue);
+
+        parens_queue
     }
 
     pub fn evaluate(mut tokens: Vec<Token>) -> Option<f32> {
@@ -107,6 +130,7 @@ impl Calculator {
         let mut stack: Vec<f32> = Vec::new();
 
         while let Some(token) = tokens.pop() {
+            println!("{:?}", token);
             match token {
                 Token::Num(num) => stack.push(num as f32),
                 Token::Op(Operator::Add) => {
@@ -133,6 +157,9 @@ impl Calculator {
                     let right = stack.pop().unwrap();
                     let left = stack.pop().unwrap();
                     stack.push(left.powf(right));
+                }
+                Token::Bracket('(') => {
+                    println!("im bracket");
                 }
                 _ => {}
             }
